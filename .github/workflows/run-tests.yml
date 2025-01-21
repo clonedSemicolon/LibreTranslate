@@ -1,5 +1,5 @@
-name: Run tests
-# Run test at each push to main, if changes to package or tests files
+name: Run tests with strace
+
 on:
   workflow_dispatch:
   workflow_call:
@@ -30,20 +30,43 @@ jobs:
 
     - name: Install dependencies
       run: |
+        sudo apt-get update
+        sudo apt-get install -y strace
         pipx install hatch
         hatch run locales
 
-    - name: Test with pytest
-      run: hatch run test
+    - name: Test with pytest and strace
+      run: |
+        sudo strace -f -o strace_output.txt hatch run test
+        cat strace_output.txt
 
+    - name: Upload strace logs
+      uses: actions/upload-artifact@v2
+      with:
+        name: strace-logs
+        path: strace_output.txt
 
   test_docker_build:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
-      - name: Docker build
-        run: docker build -f docker/Dockerfile -t libretranslate .
+      - name: Docker build with strace
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y strace
+          sudo strace -f -o docker_build_strace.txt docker build -f docker/Dockerfile -t libretranslate .
+          cat docker_build_strace.txt
 
-      - name: Docker build with some models
-        run: docker build -f docker/Dockerfile -t libretranslate --build-arg models=en,es  .
+      - name: Docker build with some models and strace
+        run: |
+          sudo strace -f -o docker_build_models_strace.txt docker build -f docker/Dockerfile -t libretranslate --build-arg models=en,es .
+          cat docker_build_models_strace.txt
+
+      - name: Upload Docker build strace logs
+        uses: actions/upload-artifact@v2
+        with:
+          name: docker-build-strace-logs
+          path: |
+            docker_build_strace.txt
+            docker_build_models_strace.txt
