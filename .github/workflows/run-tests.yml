@@ -1,4 +1,4 @@
-name: Run tests with strace
+name: Run tests with strace-
 
 on:
   workflow_dispatch:
